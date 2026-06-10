@@ -1,0 +1,94 @@
+spring:
+  application:
+    name: country-info-service
+
+  datasource:
+    url: jdbc:mysql://${DB_HOST:localhost}:${DB_PORT:3306}/${DB_NAME:countryinfo}?createDatabaseIfNotExist=true&useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      maximum-pool-size: ${DB_POOL_SIZE:10}
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO:update}
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: false
+    open-in-view: false
+    show-sql: false
+
+# CountryInfo SOAP service integration
+soap:
+  country-info:
+    endpoint: ${SOAP_ENDPOINT:http://webservices.oorsprong.org/websamples.countryinfo/CountryInfoService.wso}
+    connect-timeout-ms: ${SOAP_CONNECT_TIMEOUT_MS:5000}
+    read-timeout-ms: ${SOAP_READ_TIMEOUT_MS:10000}
+    health-timeout-ms: ${SOAP_HEALTH_TIMEOUT_MS:3000}
+
+# Resilience4j: retry (3 attempts, exponential backoff) + circuit breaker
+resilience4j:
+  retry:
+    instances:
+      countryInfoSoap:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - org.springframework.ws.client.WebServiceIOException
+          - org.springframework.ws.client.WebServiceTransportException
+          - com.ncba.countryinfo.exception.SoapIntegrationException
+  circuitbreaker:
+    instances:
+      countryInfoSoap:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 10s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+        register-health-indicator: true
+
+# Actuator: health (with probes), metrics, info, prometheus
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+      group:
+        readiness:
+          # External SOAP dependency intentionally excluded from readiness.
+          include: readinessState,db
+        liveness:
+          include: livenessState
+  health:
+    circuitbreakers:
+      enabled: true
+  metrics:
+    tags:
+      application: country-info-service
+  info:
+    env:
+      enabled: true
+
+info:
+  app:
+    name: NCBA Country Info Service
+    description: SOAP-to-REST country information integration microservice
+    version: 1.0.0
+
+logging:
+  level:
+    com.ncba.countryinfo: ${LOG_LEVEL_APP:INFO}
+    # Set to DEBUG to print full SOAP request/response envelopes
+    org.springframework.ws.client.MessageTracing: ${LOG_LEVEL_SOAP:INFO}

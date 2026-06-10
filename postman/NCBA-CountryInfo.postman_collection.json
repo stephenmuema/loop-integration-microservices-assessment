@@ -1,0 +1,390 @@
+{
+  "info": {
+    "_postman_id": "b2e9a1c4-7d33-4f0a-9c21-ncba0countryinfo",
+    "name": "NCBA Country Info Service",
+    "description": "REST API for the NCBA Country Info integration microservice.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Country CRUD",
+      "item": [
+        {
+          "name": "Ingest country (POST)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 201 Created', function () {",
+                  "    pm.response.to.have.status(201);",
+                  "});",
+                  "",
+                  "const json = pm.response.json();",
+                  "",
+                  "pm.test('id is an opaque UUID (not a sequential integer)', function () {",
+                  "    pm.expect(json.id).to.match(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);",
+                  "});",
+                  "",
+                  "pm.test('Core fields are populated from SOAP', function () {",
+                  "    pm.expect(json.isoCode).to.be.a('string').and.not.empty;",
+                  "    pm.expect(json.name).to.be.a('string').and.not.empty;",
+                  "    pm.expect(json.languages).to.be.an('array');",
+                  "});",
+                  "",
+                  "// Chain the opaque id into later requests",
+                  "pm.collectionVariables.set('countryId', json.id);",
+                  "console.log('Saved countryId =', json.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"{{countryName}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/countries",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "countries"]
+            },
+            "description": "Accepts a country name, resolves ISO code + full info via SOAP, upserts by ISO code, and returns the persisted record (201). The name is sentence-cased server-side, so 'kenya' / 'KENYA' both work."
+          }
+        },
+        {
+          "name": "Get all countries (GET)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Response is an array', function () {",
+                  "    pm.expect(pm.response.json()).to.be.an('array');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/countries",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "countries"]
+            },
+            "description": "Fetch all persisted country records."
+          }
+        },
+        {
+          "name": "Get country by id (GET)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Returned id matches requested id', function () {",
+                  "    pm.expect(pm.response.json().id).to.eql(pm.collectionVariables.get('countryId'));",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/countries/{{countryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "countries", "{{countryId}}"]
+            },
+            "description": "Fetch a single country by its opaque UUID id (taken from the Ingest response). 404 if not found."
+          }
+        },
+        {
+          "name": "Update country (PUT)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 200 OK', function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "pm.test('Name was updated (sentence-cased)', function () {",
+                  "    pm.expect(pm.response.json().name).to.eql('Republic Of Kenya');",
+                  "});",
+                  "pm.test('Capital was updated', function () {",
+                  "    pm.expect(pm.response.json().capitalCity).to.eql('Nairobi City');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"republic of kenya\",\n  \"capitalCity\": \"Nairobi City\",\n  \"phoneCode\": \"254\",\n  \"continentCode\": \"AF\",\n  \"currencyISOCode\": \"KES\",\n  \"countryFlag\": \"http://www.oorsprong.org/WebSamples.CountryInfo/Flags/Kenya.jpg\",\n  \"languages\": [\n    { \"isoCode\": \"swa\", \"name\": \"Swahili\" },\n    { \"isoCode\": \"eng\", \"name\": \"English\" }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/countries/{{countryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "countries", "{{countryId}}"]
+            },
+            "description": "Update the mutable fields of a country by its UUID id. 400 if name is blank, 404 if not found."
+          }
+        },
+        {
+          "name": "Delete country (DELETE)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 204 No Content', function () {",
+                  "    pm.response.to.have.status(204);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/countries/{{countryId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "countries", "{{countryId}}"]
+            },
+            "description": "Delete a country by its UUID id. 204 on success, 404 if not found."
+          }
+        }
+      ],
+      "description": "Run top-to-bottom: Ingest -> Get all -> Get by id -> Update -> Delete."
+    },
+    {
+      "name": "Error cases",
+      "item": [
+        {
+          "name": "POST blank name -> 400",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 400 Bad Request', function () {",
+                  "    pm.response.to.have.status(400);",
+                  "});",
+                  "pm.test('Structured error with field errors', function () {",
+                  "    const j = pm.response.json();",
+                  "    pm.expect(j.status).to.eql(400);",
+                  "    pm.expect(j.fieldErrors[0].field).to.eql('name');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"   \"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/countries",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "countries"]
+            },
+            "description": "Validation failure: blank name returns 400 with a field-level error list."
+          }
+        },
+        {
+          "name": "POST unknown country -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});",
+                  "pm.test('Structured error body', function () {",
+                  "    pm.expect(pm.response.json().status).to.eql(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [ { "key": "Content-Type", "value": "application/json" } ],
+            "body": { "mode": "raw", "raw": "{\n  \"name\": \"Wakanda\"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/api/countries",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "countries"]
+            },
+            "description": "The SOAP service does not resolve unknown countries; the service returns 404 instead of persisting a junk record."
+          }
+        },
+        {
+          "name": "GET non-existent id -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status is 404 Not Found', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/countries/00000000-0000-0000-0000-000000000000",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "countries", "00000000-0000-0000-0000-000000000000"]
+            },
+            "description": "Fetching a non-existent UUID returns a structured 404."
+          }
+        },
+        {
+          "name": "IDOR probe: GET sequential id /1 -> 404",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Sequential ids are not enumerable (404)', function () {",
+                  "    pm.response.to.have.status(404);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/countries/1",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "countries", "1"]
+            },
+            "description": "Demonstrates the IDOR mitigation: records cannot be harvested by incrementing a numeric id."
+          }
+        }
+      ],
+      "description": "Negative / security test cases."
+    },
+    {
+      "name": "Observability (Actuator)",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "health"]
+            },
+            "description": "Overall health: DB, SOAP reachability, circuit-breaker state."
+          }
+        },
+        {
+          "name": "Readiness",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health/readiness",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "health", "readiness"]
+            }
+          }
+        },
+        {
+          "name": "Liveness",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/health/liveness",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "health", "liveness"]
+            }
+          }
+        },
+        {
+          "name": "Metrics",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/metrics",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "metrics"]
+            }
+          }
+        },
+        {
+          "name": "Prometheus",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/prometheus",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "prometheus"]
+            }
+          }
+        },
+        {
+          "name": "Info",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/actuator/info",
+              "host": ["{{baseUrl}}"],
+              "path": ["actuator", "info"]
+            }
+          }
+        }
+      ],
+      "description": "Actuator endpoints for health, metrics, and monitoring."
+    }
+  ],
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080", "type": "string" },
+    { "key": "countryName", "value": "kenya", "type": "string" },
+    { "key": "countryId", "value": "", "type": "string" }
+  ]
+}
