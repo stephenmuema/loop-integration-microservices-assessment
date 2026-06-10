@@ -29,9 +29,14 @@ soap:
     read-timeout-ms: ${SOAP_READ_TIMEOUT_MS:10000}
     health-timeout-ms: ${SOAP_HEALTH_TIMEOUT_MS:3000}
 
-# Resilience4j: retry (3 attempts, exponential backoff) + circuit breaker
+# Resilience4j: retry (3 attempts, exponential backoff) + circuit breaker.
+# Aspect order: CircuitBreaker wraps Retry ("retry inside the breaker"), so a
+# user request counts as ONE breaker call and an OPEN breaker fast-fails
+# instantly without incurring retry backoff. LOWER order = more outer aspect
+# (Spring precedence), so the breaker (1) sits outside retry (2).
 resilience4j:
   retry:
+    retry-aspect-order: 2
     instances:
       countryInfoSoap:
         max-attempts: 3
@@ -43,6 +48,7 @@ resilience4j:
           - org.springframework.ws.client.WebServiceTransportException
           - com.ncba.countryinfo.exception.SoapIntegrationException
   circuitbreaker:
+    circuit-breaker-aspect-order: 1
     instances:
       countryInfoSoap:
         sliding-window-type: COUNT_BASED
