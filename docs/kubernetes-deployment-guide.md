@@ -111,6 +111,12 @@ kubectl -n ncba-countryinfo get pods -l app=mysql
 kubectl -n ncba-countryinfo get pvc          # mysql-data-mysql-0 should be Bound
 ```
 
+> **Using an external MySQL instead?** If the database lives outside the cluster
+> (managed instance, VM, or your host machine), skip this StatefulSet and apply
+> `k8s/external-mysql.yaml` instead — it maps the in-cluster name `mysql` to your
+> external host via an `ExternalName` Service, so the app needs no changes. Put
+> the real DB credentials in `secret.yaml`. See README §4 *Option D*.
+
 ### 4.4 Application
 ```bash
 kubectl apply -f k8s/deployment.yaml

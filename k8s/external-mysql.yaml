@@ -1,0 +1,83 @@
+# =============================================================================
+# External MySQL — use this INSTEAD OF k8s/mysql-deployment.yaml when the
+# database runs OUTSIDE the cluster:
+#   - a managed instance (AWS RDS, GCP Cloud SQL, Azure Database for MySQL)
+#   - a standalone MySQL server on a VM
+#   - MySQL running on your host machine (Docker Desktop / minikube / kind)
+#
+# It maps the in-cluster DNS name "mysql" to the external host, so the
+# application Deployment and ConfigMap (which reference host "mysql") need NO
+# changes — only the data tier is swapped.
+#
+# Deploy order for this mode:
+#   kubectl apply -f k8s/namespace.yaml
+#   kubectl apply -f k8s/configmap.yaml
+#   kubectl apply -f k8s/secret.yaml          # set real external DB credentials here
+#   kubectl apply -f k8s/external-mysql.yaml  # <-- instead of mysql-deployment.yaml
+#   kubectl apply -f k8s/deployment.yaml
+#   kubectl apply -f k8s/service.yaml
+#   kubectl apply -f k8s/hpa.yaml
+#
+# Prerequisites on the external MySQL:
+#   - A database/user matching the Secret (DB_USERNAME/DB_PASSWORD) with rights
+#     on the DB named by ConfigMap DB_NAME (default "countryinfo"). The app's
+#     JDBC URL uses createDatabaseIfNotExist=true, so the schema is auto-created
+#     if the user has CREATE privilege.
+#   - The user must be allowed to connect from the pod network, e.g.
+#     CREATE USER 'appuser'@'%' IDENTIFIED BY 'apppass';
+#     GRANT ALL PRIVILEGES ON countryinfo.* TO 'appuser'@'%';
+# =============================================================================
+
+# ---- Variant 1: external host is reachable by DNS NAME (recommended) ----
+# Works for managed databases (RDS/Cloud SQL endpoints) and for the host
+# machine on Docker Desktop / kind (host.docker.internal).
+apiVersion: v1
+kind: Service
+metadata:
+  name: mysql
+  namespace: ncba-countryinfo
+  labels:
+    app: mysql
+    tier: external
+spec:
+  type: ExternalName
+  # CHANGE ME to your external MySQL hostname:
+  #   host.docker.internal              -> MySQL on your host (Docker Desktop/kind)
+  #   mydb.abc123.us-east-1.rds.amazonaws.com  -> AWS RDS
+  #   10-20-30-40.example.internal      -> a VM's DNS name
+  externalName: host.docker.internal
+  ports:
+    - name: mysql
+      port: 3306
+
+# ---- Variant 2: external host is reachable only by IP ----
+# ExternalName cannot point at a bare IP (it must be a DNS name). If your DB is
+# only addressable by IP, delete the Service above and use a headless Service
+# backed by a manual EndpointSlice instead. Uncomment and set the IP:
+#
+# ---
+# apiVersion: v1
+# kind: Service
+# metadata:
+#   name: mysql
+#   namespace: ncba-countryinfo
+# spec:
+#   ports:
+#     - name: mysql
+#       port: 3306
+#       targetPort: 3306
+# ---
+# apiVersion: discovery.k8s.io/v1
+# kind: EndpointSlice
+# metadata:
+#   name: mysql-external
+#   namespace: ncba-countryinfo
+#   labels:
+#     kubernetes.io/service-name: mysql
+# addressType: IPv4
+# ports:
+#   - name: mysql
+#     port: 3306
+# endpoints:
+#   - addresses:
+#       - "203.0.113.25"   # <-- CHANGE ME to the external MySQL IP

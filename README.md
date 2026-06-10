@@ -178,10 +178,51 @@ mvn clean package                # produces target/country-info-service-1.0.0.ja
 java -jar target/country-info-service-1.0.0.jar       # uses env vars / defaults for DB
 ```
 
-### Running on Kubernetes
-For deploying to a cluster, see the **[Kubernetes Deployment Guide](docs/kubernetes-deployment-guide.md)**
-(build/load the image, `kubectl apply` the `k8s/` manifests, verify). A short
-summary is in §7 below.
+### Option D — Kubernetes app + external MySQL server
+
+Run the **application on Kubernetes** but back it with a **MySQL server outside
+the cluster** — a managed instance (RDS / Cloud SQL / Azure DB), a standalone
+VM, or MySQL on your host machine. The in-cluster MySQL StatefulSet is replaced
+by an `ExternalName` Service named `mysql`, so the app `Deployment`/`ConfigMap`
+need **no changes** — only the data tier is swapped.
+
+```bash
+# 1) Point the ExternalName at your MySQL host (edit k8s/external-mysql.yaml):
+#      externalName: host.docker.internal           # MySQL on your host (Docker Desktop/kind)
+#      externalName: mydb.xxxx.rds.amazonaws.com     # a managed instance
+#    (IP-only DB? use the commented EndpointSlice variant in that file.)
+
+# 2) Put the real DB credentials in the Secret (k8s/secret.yaml: DB_USERNAME/DB_PASSWORD).
+
+# 3) Deploy — note: external-mysql.yaml is used INSTEAD OF mysql-deployment.yaml
+kubectl apply -f k8s/namespace.yaml
+kubectl apply -f k8s/configmap.yaml
+kubectl apply -f k8s/secret.yaml
+kubectl apply -f k8s/external-mysql.yaml      # <-- external DB (no StatefulSet)
+kubectl apply -f k8s/deployment.yaml
+kubectl apply -f k8s/service.yaml
+kubectl apply -f k8s/hpa.yaml
+
+kubectl -n ncba-countryinfo rollout status deployment/countryinfo-app
+```
+
+On the external MySQL, ensure a user/database matching the Secret exists and is
+reachable from the pod network:
+```sql
+CREATE USER 'appuser'@'%' IDENTIFIED BY 'apppass';
+GRANT ALL PRIVILEGES ON countryinfo.* TO 'appuser'@'%';
+```
+(The app's JDBC URL uses `createDatabaseIfNotExist=true`, so the schema is
+auto-created when the user has CREATE privilege.)
+
+> **Verified:** this mode was tested on Docker Desktop's Kubernetes by pointing
+> `mysql` at `host.docker.internal` — the app on K8s wrote records to the host
+> MySQL successfully (`db` health UP, CRUD working).
+
+### Running on Kubernetes (in-cluster DB)
+For the standard deployment (app **and** MySQL inside the cluster), see the
+**[Kubernetes Deployment Guide](docs/kubernetes-deployment-guide.md)** (build/load
+the image, `kubectl apply` the `k8s/` manifests, verify). A short summary is in §7.
 
 ---
 
