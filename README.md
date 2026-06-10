@@ -83,7 +83,7 @@ com.ncba.countryinfo
 ### Scaling & high-load notes
 - **Horizontal scaling:** stateless pods + `HorizontalPodAutoscaler` (2→10 on 70% CPU).
 - **Load balancing:** Kubernetes `Service` spreads traffic across replicas; Ingress fronts external traffic.
-- **Failure isolation:** per-call timeouts, 3-attempt exponential-backoff retry, and a circuit breaker that fast-fails while the upstream is unhealthy, with a fallback that yields a clean `502`.
+- **Failure isolation:** per-call timeouts, 3-attempt exponential-backoff retry, and a circuit breaker that fast-fails while the upstream is unhealthy, with a fallback that yields a clean `502`. **Verified live:** with the SOAP endpoint pointed at a dead address, the breaker transitioned `CLOSED → OPEN` after the failure-rate threshold, blocked further calls to the downstream (`notPermittedCalls`), moved to `HALF_OPEN` after the 10s wait, and reset to `CLOSED` once the endpoint recovered — observable at `/actuator/health` and via the `resilience4j_circuitbreaker_state` metric.
 - **Future caching/queueing:** ISO-code lookups are highly cacheable (add a Caffeine/Redis cache on `getIsoCode`); ingestion could be made async via a queue if write volume grows. Hooks are isolated in `SoapCountryClient`/`CountryService`.
 
 ---
