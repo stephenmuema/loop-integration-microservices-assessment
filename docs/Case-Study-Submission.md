@@ -53,14 +53,14 @@ POST /api/countries {"name":"kenya"}
 
 | Requirement | How it is satisfied | Status |
 |---|---|---|
-| Clear system design + justified trade-offs | Architecture diagram + design-decision table in README | ✅ |
-| High load: stateless, horizontal scaling, load balancing | Stateless pods, K8s `Service` load-balancing 2 replicas, HPA (2→10 @70% CPU) | ✅ (LB proven; HPA configured) |
-| Failure handling: retries, timeouts, circuit breakers, fallbacks | Resilience4j retry (3×, exp. backoff), 5s/10s timeouts, circuit breaker + fallback → `502` | ✅ Proven live |
-| Structured logging, metrics, monitoring | JSON logs (logback), Micrometer + `/actuator/prometheus`, health with DB/SOAP/breaker | ✅ Proven |
-| Separation of concerns (MVC) | controller / service / repository / model / dto / client / config / exception / util | ✅ |
-| Robust error handling + proper status codes | `@RestControllerAdvice`, structured error envelope, 400/404/502/500 | ✅ Proven |
-| Production-ready deployment | Multi-stage non-root image, ConfigMap/Secret, readiness/liveness probes | ✅ Proven |
-| Steps to run and test | README §4 (4 run options), §5 tests, Postman collection, docs | ✅ |
+| Clear system design + justified trade-offs | Architecture diagram + design-decision table in README | Met |
+| High load: stateless, horizontal scaling, load balancing | Stateless pods, K8s `Service` load-balancing 2 replicas, HPA (2->10 @70% CPU) | Met (LB proven; HPA configured) |
+| Failure handling: retries, timeouts, circuit breakers, fallbacks | Resilience4j retry (3x, exp. backoff), 5s/10s timeouts, circuit breaker + fallback -> `502` | Proven live |
+| Structured logging, metrics, monitoring | JSON logs (logback), Micrometer + `/actuator/prometheus`, health with DB/SOAP/breaker | Proven |
+| Separation of concerns (MVC) | controller / service / repository / model / dto / client / config / exception / util | Met |
+| Robust error handling + proper status codes | `@RestControllerAdvice`, structured error envelope, 400/404/502/500 | Proven |
+| Production-ready deployment | Multi-stage non-root image, ConfigMap/Secret, readiness/liveness probes | Proven |
+| Steps to run and test | README §4 (4 run options), §5 tests, Postman collection, docs | Met |
 
 ---
 
@@ -68,12 +68,12 @@ POST /api/countries {"name":"kenya"}
 
 ```
             Kubernetes (namespace: ncba-countryinfo)
-  client ─▶ Ingress(nginx) ─▶ Service(ClusterIP) ─▶ Deployment (HPA 2..10)
+  client ─> Ingress(nginx) ─> Service(ClusterIP) ─> Deployment (HPA 2..10)
                                                         │
-                                                        ▼
-                                          StatefulSet: MySQL (PVC)   ── or ──▶ external MySQL
+                                                        v
+                                          StatefulSet: MySQL (PVC)   ── or ──> external MySQL
                                                         │                       (ExternalName)
-                                                        ▼ SOAP (egress)
+                                                        v SOAP (egress)
                           http://webservices.oorsprong.org/.../CountryInfoService.wso
 ```
 

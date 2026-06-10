@@ -29,12 +29,12 @@ The deployment consists of:
 
 ```
             Ingress(nginx)        Service(ClusterIP)         Deployment (HPA 2..10)
- client ──▶ countryinfo.local ──▶ countryinfo-app:80 ──────▶ pod:8080  pod:8080 ...
+ client ──> countryinfo.local ──> countryinfo-app:80 ──────> pod:8080  pod:8080 ...
                                                                   │
-                                                                  ▼
+                                                                  v
                                                   StatefulSet: mysql (headless svc + PVC)
                                                                   │
-                                                                  ▼  SOAP (egress)
+                                                                  v  SOAP (egress)
                               http://webservices.oorsprong.org/.../CountryInfoService.wso
 ```
 

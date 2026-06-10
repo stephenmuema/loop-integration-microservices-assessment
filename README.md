@@ -7,7 +7,7 @@ with Docker and deployable to **Kubernetes**.
 
 > Built for the NCBA *Integration Microservices Engineer* assessment.
 
-### 📄 Standalone documentation (`docs/`)
+### Standalone documentation (`docs/`)
 | Document | Markdown | PDF |
 |---|---|---|
 | API reference (all endpoints) | [`docs/api-documentation.md`](docs/api-documentation.md) | [`docs/api-documentation.pdf`](docs/api-documentation.pdf) |
@@ -27,26 +27,26 @@ versions to share.
             │                    Kubernetes (ns: ncba-countryinfo)          │
             │                                                               │
   Client    │   Ingress(nginx)      Service(ClusterIP)     Deployment      │
-  ──HTTP──▶ │  countryinfo.local ─▶  countryinfo-app:80 ─▶  2..10 pods      │
+  ──HTTP──> │  countryinfo.local ─>  countryinfo-app:80 ─>  2..10 pods      │
             │                                              (HPA on CPU 70%) │
             │                                                  │            │
             │                                   ┌──────────────┼─────────┐  │
-            │                                   ▼              ▼         │  │
+            │                                   v              v         │  │
             │                          StatefulSet:mysql   (each pod)    │  │
             │                          PVC (2Gi)              │          │  │
             └──────────────────────────────────────────────┼──────────┘  │
                                                             │             │
-                                                            ▼  SOAP (HTTP)
+                                                            v  SOAP (HTTP)
                               http://webservices.oorsprong.org/.../CountryInfoService.wso
 ```
 
 **Request flow for `POST /api/countries {"name":"kenya"}`:**
 
 ```
-Controller ─▶ Service ─▶ SoapCountryClient ──(1) CountryISOCode("Kenya") ─▶ SOAP ─▶ "KE"
-                          SoapCountryClient ──(2) FullCountryInfo("KE")   ─▶ SOAP ─▶ {name,capital,...,languages}
-              Service ─▶ map to CountryInfo + Language ─▶ upsert by isoCode ─▶ MySQL
-Controller ◀─ 201 Created (CountryResponse DTO)
+Controller ─> Service ─> SoapCountryClient ──(1) CountryISOCode("Kenya") ─> SOAP ─> "KE"
+                          SoapCountryClient ──(2) FullCountryInfo("KE")   ─> SOAP ─> {name,capital,...,languages}
+              Service ─> map to CountryInfo + Language ─> upsert by isoCode ─> MySQL
+Controller <─ 201 Created (CountryResponse DTO)
 ```
 
 ### Layered (MVC) structure
@@ -93,7 +93,7 @@ com.ncba.countryinfo
 | Tool | Version | Needed for |
 |---|---|---|
 | **Docker** + **Docker Compose v2** | recent | Running everything containerised (the easiest path) |
-| **JDK 17** | exactly 17 (LTS) | Building/running with Maven. ⚠️ JDK 24+ breaks Lombok annotation processing — use 17. |
+| **JDK 17** | exactly 17 (LTS) | Building/running with Maven. Note: JDK 24+ breaks Lombok annotation processing — use 17. |
 | **Maven** | 3.9+ | Building the jar / running tests |
 | **kubectl** + a cluster | — | Kubernetes deployment (minikube / kind / Docker Desktop) |
 | **MySQL 8** | — | Only if running the app outside Docker without the compose DB |
